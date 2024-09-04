@@ -145,7 +145,7 @@ def main() -> None:
 
         merge_df = pd.merge(filtered_df, stocks, on='Ticker')
         st.write("Filtered Stocks:")
-        st.dataframe(merge_df)
+        st.dataframe(merge_df.loc[:, ['Ticker', 'GICS Sector', 'GICS Sub-Industry', 'Current Ratio', 'Debt to Equity', 'P/E Ratio', 'Dividend Yield', 'Payout Ratio']])
 
 
 

@@ -12,4 +12,9 @@ RUN sh /uv-installer.sh && rm /uv-installer.sh
 # Ensure the installed binary is on the `PATH`
 ENV PATH="/root/.cargo/bin/:$PATH"
 
-RUN mdkir app
+# Copy the project into the image
+ADD . /app
+
+# Sync the project into a new environment, using the frozen lockfile
+WORKDIR /app
+RUN uv sync --frozen
