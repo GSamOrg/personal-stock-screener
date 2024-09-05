@@ -107,7 +107,6 @@ def filter_data_to_criteria(stock_data: list, criteria: dict) -> pd.DataFrame:
     ]
 
     return filtered_stocks
-# Display the filtered stocks
 
 def main() -> None:
     # Streamlit App
