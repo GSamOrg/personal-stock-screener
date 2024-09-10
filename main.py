@@ -1,19 +1,20 @@
+import os
+from dotenv import load_dotenv
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from stqdm import stqdm
 import streamlit as st
+import requests
 
+from loguru import logger
+
+
+load_dotenv()
 
 
 def get_nyse_stocks():
-    """
-    Fetches a list of all NYSE stocks from Wikipedia.
-
-    Returns:
-        nyse_stocks (pd.DataFrame): A DataFrame containing the list of NYSE stocks, with columns like 'Symbol' and 'Company'.
-        tickers (list): A list of ticker symbols for all NYSE stocks.
-    """
     # URL of the Wikipedia page with the list of NYSE-listed companies
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 
@@ -50,12 +51,12 @@ def get_financial_data(ticker):
     
     try:
         # Get balance sheet data
-        balance_sheet = stock.balance_sheet
+        balance_sheet = stock.quarterly_balancesheet
         nil_pos_col = balance_sheet.columns[0]
         info = stock.info
         
         if check_fields_if_valid(list(balance_sheet.index)):
-            print(f'Adding Ticker {ticker}')
+            logger.info(f'Adding Ticker {ticker}')
             current_assets = balance_sheet.loc['Current Assets', nil_pos_col]
             current_liabilities = balance_sheet.loc['Current Liabilities', nil_pos_col]
             inventory = balance_sheet.loc['Inventory', nil_pos_col]
@@ -90,11 +91,23 @@ def get_financial_data(ticker):
         else:
             return None
     except Exception as e:
-        print(f'Ticker failed: {ticker} with {e}')
+        logger.info(f'Ticker failed: {ticker} with {e}')
         return None
 
+
+def get_fmp_data(ticker: str, api_key: str) -> dict:
+    try:
+        url = f"https://financialmodelingprep.com/api/v3/cash-flow-statement/{ticker}?period=quarter&apikey={api_key}"
+        resp = requests.get(url)
+
+        return resp.json()
+    except Exception as e:
+        print(e)    
+
+
+
 # Fetch data for all tickers
-def filter_data_to_criteria(stock_data: list, criteria: dict) -> pd.DataFrame:
+def filter_data_to_criteria(stock_data: pd.DataFrame, criteria: dict) -> pd.DataFrame:
     df = pd.DataFrame(stock_data)
     # Apply the screening criteria
     filtered_stocks = df[
@@ -120,13 +133,6 @@ def main() -> None:
     dividend_yield_min = st.sidebar.slider("Minimum Dividend Yield (%)", 0.0, 10.0, 2.0)
     payout_ratio_max = st.sidebar.slider("Maximum Payout Ratio", 0.0, 1.0, 0.6)
 
-    # criteria = {
-    #     'current_ratio': 1.5,
-    #     'debt_to_equity': 0.5,
-    #     'dividend_yield': 0.02,  # 2%
-    #     'payout_ratio': 0.6,
-    #     'pe_ratio': 20,
-    # }
     if st.button("Run Stock Screener"):
         criteria = {
             'current_ratio': current_ratio_min,
@@ -138,14 +144,14 @@ def main() -> None:
 
         stocks, symbols = get_nyse_stocks()
         stocks['Ticker'] = stocks['Symbol']
-        stock_data = [get_financial_data(ticker) for ticker in stqdm(symbols)]
-        stock_data = [item for item in stock_data if item]
+        stock_fin_list = [get_financial_data(ticker) for ticker in stqdm(symbols)]
+        stock_fin_list = [item for item in stock_fin_list if item]
+        stock_data = pd.DataFrame(stock_fin_list)
         filtered_df = filter_data_to_criteria(stock_data=stock_data, criteria=criteria)
 
         merge_df = pd.merge(filtered_df, stocks, on='Ticker')
         st.write("Filtered Stocks:")
         st.dataframe(merge_df.loc[:, ['Ticker', 'GICS Sector', 'GICS Sub-Industry', 'Current Ratio', 'Debt to Equity', 'P/E Ratio', 'Dividend Yield', 'Payout Ratio']])
-
 
 
 if __name__ == '__main__':
