@@ -138,7 +138,7 @@ def filter_data_to_criteria(stock_data: pd.DataFrame, criteria: dict) -> pd.Data
 def main() -> None:
     # Streamlit App
     st.title("Stock Screener App")
-    cache = DataframeCache()
+    cache = DataframeCache(cache_stale_days=15)
     # Adjust financial ratios using Streamlit sliders
     st.sidebar.header("Set Financial Ratios")
     current_ratio_min = st.sidebar.slider("Minimum Current Ratio", 0.0, 10.0, 1.5)
